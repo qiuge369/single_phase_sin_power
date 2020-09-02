@@ -11,6 +11,7 @@
 #include "setclock.h"
 #include "pid_delta.h"
 #include "q_ADS1118.h"
+#include "Math.h"
 
 
 //函数声明
@@ -21,6 +22,7 @@ void pidAdjust(double in_voltage);
 void DispFloatat(unsigned char x,unsigned char y,float dat,unsigned char len1,unsigned char len2 );
 void my_key();
 void suprotect(float vol);
+void SPWM_Set_Freq(unsigned int freq);
 
 //变量声明
 int duty=0;//占空比
@@ -33,8 +35,9 @@ int spwm_1,spwm_2;
 int frequence=100;
 double K=1;//调制度，初始值假设电压值为准确输出1V
 double dealtK=0;
-
-int spwm[256]=
+int v_i=0;//采样一整个周期电压的计数
+int spwm_num=256;
+int spwm[spwm_num]=
 {
  488,500,512,524,536,548,560,571,583,595,607,618,630,641,652,664,675,686,697,
  707,718,729,739,749,759,769,779,788,798,807,816,824,833,841,850,858,865,873,
@@ -64,7 +67,8 @@ void main()
    init_key();
 
    OLED_ShowString(0,0,"frequence:");
-   OLED_ShowString(0,2,"voltage:");
+   OLED_ShowString(0,2,"Vrms:");
+
    __enable_interrupt();//开启总中断
 
 //   while(1)while进不来，只能用中断
@@ -74,14 +78,14 @@ void main()
 __interrupt void TIMER1_A0_ISR(void)
 {
     TA0CCR1 =K*spwm[spwm_1++];//第一路
-    if(spwm_1==256)
+    if(spwm_1==spwm_num)
         spwm_1=0;
     TA0CCR2 =K*spwm[spwm_2++];//第二路
-    if(spwm_2==256)
+    if(spwm_2==spwm_num)
         spwm_2=0;
 
     my_key();
-//       getVoltage();
+    getVoltage();
     OLED_ShowNum(96,0,frequence,3,16);
 }
 
@@ -102,7 +106,6 @@ void initSPWM(void)
   spwm_2=1;//相位相差
   TA0CTL |=TASSEL_2 + MC_3 + TACLR;//配置A0计数器,时钟源SMCLK，上升模式，同时清除计数器//*配置计数器
   //TASSEL_2选择了SMCLK，MC_1计数模式，，最后清零TACLR
-//  TA0CCTL0 = CCIE;//使能定时器中断（CCR0单源中断），CCIE捕获比较寄存器的使能配置
   TA0CCR0 = 198;//载波500K
   TA0CCTL1 |= OUTMOD_2;
   TA0CCR1 = spwm[spwm_1];
@@ -119,13 +122,13 @@ void initSPWM(void)
 void SPWM_Set_Freq(unsigned int freq)
 {
     unsigned long freq_num;
-    freq_num=25000000/(freq*256)-1;
+    freq_num=25000000/(freq*spwm_num)-1;
     TA1CCR0 =freq_num;
 }
 /****************************设置初始值*********************************/
 void initPara()
 {
-  pid.setPoint = 36;   ////设定值，不确定
+  pid.setPoint = 1;   ////设定值
   adjust_pid(&pid, 0, 0, 0);//调整PID系数
   adjust_pid_limit(&pid, -10, 10);//设定PID误差增量的限制范围
   ADS1118_GPIO_Init();  //配置管脚（模拟SPI，加上Vcc、GND需要6根线，除去这俩需要4根线，故需要管脚配置）
@@ -141,13 +144,23 @@ void pidAdjust(double in_voltage)
 /****************************读取电压值函数********************************/
 int Value=0;
 double Voltage=0;
+double v_sum=0;
+double Vrms=0;
 void getVoltage()
 {
-        Value = Write_SIP(0xe38b);           //AD数值     Conversion Register
+        Value = Write_SIP(0xf38b);           //AD数值     Conversion Register
         Voltage=change_voltage(Value,4.096);
-        Voltage=Voltage*11.98;//-(1.519*current-0.1115)
-        pidAdjust(Voltage);
-        DispFloatat(72,2,Voltage,2,3);//显示电压值
+        Voltage=Voltage;//-(1.519*current-0.1115)
+//        pidAdjust(Voltage);
+        v_sum+=Voltage*Voltage;
+        v_i++;
+        if(v_i==spwm_num)
+        {
+            v_i=0;
+            Vrms =sqrt(v_sum / spwm_num);
+            v_sum=0;
+            DispFloatat(72,2,Vrms,2,3);//显示电压值
+        }
 }
 
 /*****************************过流保护*********************************/
