@@ -16,7 +16,7 @@
 //函数声明
 void initSPWM(void);//初始化SPWM
 void initPara();
-double getVoltage();
+void getVoltage();
 void pidAdjust(double in_voltage);
 void DispFloatat(unsigned char x,unsigned char y,float dat,unsigned char len1,unsigned char len2 );
 void my_key();
@@ -64,9 +64,10 @@ void main()
    init_key();
 
    OLED_ShowString(0,0,"frequence:");
-   OLED_ShowNum(96,0,frequence,3,16);
-
+   OLED_ShowString(0,2,"voltage:");
    __enable_interrupt();//开启总中断
+
+//   while(1)while进不来，只能用中断
 }
 
 #pragma vector=TIMER1_A0_VECTOR
@@ -78,6 +79,10 @@ __interrupt void TIMER1_A0_ISR(void)
     TA0CCR2 =K*spwm[spwm_2++];//第二路
     if(spwm_2==256)
         spwm_2=0;
+
+    my_key();
+//       getVoltage();
+    OLED_ShowNum(96,0,frequence,3,16);
 }
 
 /****************************SPWM初始化输出*********************************
@@ -94,20 +99,21 @@ void initSPWM(void)
   P1DIR |= BIT3;//CCR3
   P1SEL |= BIT3;
   spwm_1=0;
-  spwm_2=10;//相位相差
-  TA0CTL |=TASSEL_2 + MC_1 + TACLR;//配置A0计数器,时钟源SMCLK，上升模式，同时清除计数器//*配置计数器
+  spwm_2=1;//相位相差
+  TA0CTL |=TASSEL_2 + MC_3 + TACLR;//配置A0计数器,时钟源SMCLK，上升模式，同时清除计数器//*配置计数器
   //TASSEL_2选择了SMCLK，MC_1计数模式，，最后清零TACLR
 //  TA0CCTL0 = CCIE;//使能定时器中断（CCR0单源中断），CCIE捕获比较寄存器的使能配置
   TA0CCR0 = 198;//载波500K
-  TA0CCTL1 |= OUTMOD_7;
+  TA0CCTL1 |= OUTMOD_2;
   TA0CCR1 = spwm[spwm_1];
 
-  TA0CCTL2 |= OUTMOD_7;
+  TA0CCTL2 |= OUTMOD_6;
   TA0CCR2 = spwm[spwm_2];
 
   TA1CCR0 =976;////25000000/(256*100)=976。100Hz，256个点：25.6KHZ
-  TA1CTL =TASSEL_2+MC_1+TACLR;//选择时钟为SMCLK，UP模式
+  TA1CTL =TASSEL_2+MC_3+TACLR;//选择时钟为SMCLK，UP模式
   TA1CTL  |= TAIE;//开启中断
+  TA1CCTL0 = CCIE;//使能定时器中断（CCR0单源中断），CCIE捕获比较寄存器的使能配置
 }
 /****************************设置频率*********************************/
 void SPWM_Set_Freq(unsigned int freq)
@@ -135,13 +141,13 @@ void pidAdjust(double in_voltage)
 /****************************读取电压值函数********************************/
 int Value=0;
 double Voltage=0;
-double getVoltage()
+void getVoltage()
 {
         Value = Write_SIP(0xe38b);           //AD数值     Conversion Register
         Voltage=change_voltage(Value,4.096);
         Voltage=Voltage*11.98;//-(1.519*current-0.1115)
-        DispFloatat(72,0,Voltage,2,3);//显示电压值
-        return Voltage;
+        pidAdjust(Voltage);
+        DispFloatat(72,2,Voltage,2,3);//显示电压值
 }
 
 /*****************************过流保护*********************************/
@@ -160,8 +166,6 @@ void suprotect(float vol)
         }
     else
         c_i=0;
-
-
 }
 /****************************按键函数********************************/
 //A,B步进加减，步进值加减5Hz
@@ -183,7 +187,8 @@ void my_key()
                             break;
                       case(4)://A
                               if(frequence<100)
-                                  SPWM_Set_Freq(frequence+5);
+                                  frequence=frequence+5;
+                              SPWM_Set_Freq(frequence);
                                 key_value=0;
                             break;
                       case(5):
@@ -197,7 +202,8 @@ void my_key()
                             break;
                         case(8)://B
                                 if(frequence>5)
-                                    SPWM_Set_Freq(frequence-5);
+                                    frequence=frequence-5;
+                                SPWM_Set_Freq(frequence);
                                 key_value=0;
                             break;
                         case(9):
@@ -260,5 +266,4 @@ void DispFloatat(unsigned char x,unsigned char y,float dat,unsigned char len1,un
         }
     else
         OLED_ShowNum(x+8*len1+8,y,dat2,len2,16);
-
 }
