@@ -12,19 +12,20 @@ static uint16_t SetVCoreUp (uint8_t level);
  *
  *
  **/
-void SetClock_MCLK12MHZ_SMCLK24MHZ_ACLK32_768K(void)
+void SetClock_MCLK12MHZ_SMCLK25MHZ_ACLK32_768K(void)
 {
 //    volatile unsigned int i;
 
-    SetVCore(PMMCOREV_1);                     // Set VCore = 1.6V for 12MHz clock
+    SetVCore(PMMCOREV_3);                     // Set VCore = 1.6V for 12MHz clock
 
     UCSCTL3 |= SELREF_2;                      // Set DCO FLL reference = REFO
     UCSCTL4 |= SELA_2;                        // Set ACLK = REFO
 
     __bis_SR_register(SCG0);                  // Disable the FLL control loop
     UCSCTL0 = 0x0000;                         // Set lowest possible DCOx, MODx
-    UCSCTL1 = DCORSEL_6;                      // Select DCO range 24MHz operation
-    UCSCTL2 = FLLD_1 + 732;                   // Set DCO Multiplier for 12MHz
+    UCSCTL1 = DCORSEL_7;                      // Select DCO range 24MHz operation
+    UCSCTL2 = FLLD_1 + 776;                   //sclkÆµÂÊ25MHz
+                                              // Set DCO Multiplier for 12MHz
                                               // (N + 1) * FLLRef = Fdco
                                               // (374 + 1) * 32768 = 12MHz
                                               // Set FLL Div = fDCOCLK/2

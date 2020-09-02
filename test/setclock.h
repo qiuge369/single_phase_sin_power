@@ -19,7 +19,7 @@
 #define _HAL_PMM_SVMFP  (SVMLFP)
 
 
-void SetClock_MCLK12MHZ_SMCLK24MHZ_ACLK32_768K(void);
+void SetClock_MCLK12MHZ_SMCLK25MHZ_ACLK32_768K(void);
 
 
 
