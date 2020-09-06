@@ -73,7 +73,7 @@ void main()
 
 //   while(1)while进不来，只能用中断
 }
-
+int count_vrms=0;
 #pragma vector=TIMER1_A0_VECTOR
 __interrupt void TIMER1_A0_ISR(void)
 {
@@ -97,7 +97,7 @@ void initSPWM(void)
   P1SEL |= BIT3;
   spwm_1=0;
   spwm_2=1;//相位相差
-  TA0CTL |=TASSEL_2 + MC_3 + TACLR;//配置A0计数器,时钟源SMCLK，上升模式，同时清除计数器//*配置计数器
+  TA0CTL |=TASSEL_2 + MC_1 + TACLR;//配置A0计数器,时钟源SMCLK，上升模式，同时清除计数器//*配置计数器
   //TASSEL_2选择了SMCLK，MC_1计数模式，，最后清零TACLR
   TA0CCR0 = 198;//载波500K
   TA0CCTL1 |= OUTMOD_2;
@@ -106,7 +106,7 @@ void initSPWM(void)
   TA0CCTL2 |= OUTMOD_6;
   TA0CCR2 = spwm[spwm_2];
 
-  TA1CCR0 =9760;////25000000/(256*100)=976。100Hz，256个点：25.6KHZ
+  TA1CCR0 =2500;////25000000/(256*100)=976。100Hz，256个点：25.6KHZ
   TA1CTL =TASSEL_2+MC_3+TACLR;//选择时钟为SMCLK，UP模式
   TA1CTL  |= TAIE;//开启中断
   TA1CCTL0 = CCIE;//使能定时器中断（CCR0单源中断），CCIE捕获比较寄存器的使能配置
@@ -135,17 +135,18 @@ void getVoltage()
 {
         Value = Write_SIP(0xf38b);           //AD数值     Conversion Register
         Voltage=change_voltage(Value,4.096);
+        DispFloatat(72,2,Voltage,2,3);//显示电压值
 //        pidAdjust(Voltage);
-        Voltage=Voltage-1;
-        v_sum+=Voltage*Voltage;
-        a[v_i]=Voltage;
-        v_i++;
-        if(v_i==spwm_num)
+//        Voltage=Voltage-1.414;
+        if(v_i>=20)
+            v_sum+=Voltage*Voltage;
+        a[v_i++]=Voltage;
+        if(v_i==200)
         {
             v_i=0;
-            Vrms =sqrt(v_sum / spwm_num);
+            Vrms =sqrt(v_sum / 180);
             v_sum=0;
-            DispFloatat(72,2,Vrms,2,3);//显示电压值
+//            DispFloatat(72,2,Vrms,2,3);//显示电压值
         }
 }
 

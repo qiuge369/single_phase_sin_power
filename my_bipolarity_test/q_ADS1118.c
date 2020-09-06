@@ -21,10 +21,11 @@ u16 Write_SIP(unsigned int temp)
 {
     //2.1->CS 2.2->SCLK 2.3->MOSI 2.4->MISO   （标准SPI无片选接口）
     //5.2->CS 5.4->SCLK 7.4->MOSI 1.0->MISO  （标准SPI无片选接口）
+    //5.3->CS 5.5->SCLK 7.5->MOSI（DIN） 1.1->MISO（DOUT）  （标准SPI无片选接口）
     char i;
     u16 Read_Data;
-    P7DIR |= BIT4;                   //     DIN -->对应（MOSI）
-    P1DIR &=~BIT0;                    //设置P3.1为数据输入 Dout-->对应（MISO）;
+    P7DIR |= BIT5;                   //     DIN -->对应（MOSI）
+    P1DIR &=~BIT1;                    //设置P3.1为数据输入 Dout-->对应（MISO）;
 
     ADS1118_SCLK_L;
     ADS1118_CS_L;
@@ -48,7 +49,7 @@ u16 Write_SIP(unsigned int temp)
 //          Read_Data++;
           Read_Data|=0x0001 ;
       }
-      __delay_cycles(150);//15000
+//      __delay_cycles(10);//15000
       ADS1118_SCLK_L;
 
     }
@@ -69,16 +70,17 @@ u16 Write_SIP(unsigned int temp)
 **************************************************************/
 
 void ADS1118_GPIO_Init(void)
-{//2.1->CS 2.2->SCLK 2.3->MOSI 2.4->MISO   （标准SPI无片选接口）
+{
  //5.2->CS 5.4->SCLK 7.4->MOSI 1.0->MISO  （标准SPI无片选接口）
-    P7DIR |= BIT4;//MOSI
-    P5DIR |= BIT2;//CS
+ //5.3->CS 5.5->SCLK 7.5->MOSI（DIN） 1.1->MISO（DOUT）  （标准SPI无片选接口）
+    P7DIR |= BIT5;//MOSI
+    P5DIR |= BIT3;//CS
 
-    P1DIR &= ~BIT0;//MISO
-    P1REN |= BIT0;
-    P1OUT &=~ BIT0;
+    P1DIR &= ~BIT1;//MISO
+    P1REN |= BIT1;
+    P1OUT &=~ BIT1;
 
-    P5DIR |= BIT4;//clk
+    P5DIR |= BIT5;//clk
 }
 /************************************************************
 *函数名称: change_voltage()
@@ -92,7 +94,7 @@ float change_voltage(u16 AD_value,double FS)//将读出的AD数值转换为电压值
     float AD_Voltage;
     if(AD_value>=0x8000)
       {
-        AD_value=0xFFFF-AD_value;//把0xFFFF改成0x10000
+        AD_value=0x10000-AD_value;//把0xFFFF改成0x10000
         AD_Voltage=(-1.0)*((AD_value*FS/0x8000));
       }
     else

@@ -78,7 +78,7 @@ void main()
 
 //   while(1)while进不来，只能用中断
 }
-
+int count_vrms=0;
 #pragma vector=TIMER1_A0_VECTOR
 __interrupt void TIMER1_A0_ISR(void)
 {
@@ -90,7 +90,11 @@ __interrupt void TIMER1_A0_ISR(void)
         spwm_2=0;
 
     my_key();
-    getVoltage();
+    if(count_vrms++>4)
+    {
+        getVoltage();
+        count_vrms=0;
+    }
     OLED_ShowNum(96,0,frequence,3,16);
     TA1IV=0;//中断清零
 }
